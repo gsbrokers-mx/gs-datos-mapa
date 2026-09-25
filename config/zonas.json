@@ -1,0 +1,41 @@
+{
+  "zmg": {
+    "nombre": "Zona Metropolitana de Guadalajara",
+    "pais": "MX",
+    "entidad": "14",
+    "municipios": {
+      "002": "Acatlán de Juárez",
+      "039": "Guadalajara",
+      "044": "Ixtlahuacán de los Membrillos",
+      "051": "Juanacatlán",
+      "070": "El Salto",
+      "097": "Tlajomulco de Zúñiga",
+      "098": "San Pedro Tlaquepaque",
+      "101": "Tonalá",
+      "120": "Zapopan",
+      "124": "Zapotlanejo"
+    },
+    "osm_area": {
+      "iso_estado": "MX-JAL",
+      "admin_level": "6"
+    },
+    "bbox": [20.30, -103.75, 20.95, -102.90],
+    "capas": ["salud", "educacion", "bancos", "comercio", "otros", "parques", "referencias", "salones", "tren"],
+    "tren": {
+      "route": "light_rail|subway|train",
+      "network": "Mi Tren|SITEUR|Tren Ligero",
+      "tipo": "tren_ligero"
+    }
+  },
+  "madrid": {
+    "nombre": "Madrid",
+    "pais": "ES",
+    "bbox": [40.25, -3.90, 40.60, -3.45],
+    "capas": ["tren"],
+    "tren": {
+      "route": "subway",
+      "network": "^Metro de Madrid$",
+      "tipo": "metro"
+    }
+  }
+}

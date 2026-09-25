@@ -1,0 +1,94 @@
+name: Datos del mapa (nocturno)
+
+on:
+  schedule:
+    - cron: "0 9 * * *"   # 03:00 hora del centro de México (UTC-6, sin horario de verano)
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "fuentes/sep/entrada/**"
+      - "config/**"
+      - "scripts/**"
+      - ".github/workflows/nocturno.yml"
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+  issues: write
+
+concurrency:
+  group: datos-mapa
+  cancel-in-progress: false
+
+env:
+  BASE_URL: https://gsbrokers-mx.github.io/gs-datos-mapa
+
+jobs:
+  construir:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - run: pip install -r requirements.txt
+
+      - name: Preparar catálogo SEP nuevo (si se subió uno)
+        run: |
+          archivo=$(ls fuentes/sep/entrada/*.csv fuentes/sep/entrada/*.zip fuentes/sep/entrada/*.CSV fuentes/sep/entrada/*.ZIP 2>/dev/null | head -1 || true)
+          if [ -n "$archivo" ]; then
+            python scripts/sep.py preparar "$archivo"
+            git rm -q fuentes/sep/entrada/*.csv fuentes/sep/entrada/*.zip fuentes/sep/entrada/*.CSV fuentes/sep/entrada/*.ZIP 2>/dev/null || true
+            git config user.name "GS Brokers (automático)"
+            git config user.email "333556446+gsbrokers-mx@users.noreply.github.com"
+            git add fuentes/sep/escuelas.csv.gz fuentes/sep/escuelas.json
+            git commit -m "SEP: catálogo actualizado desde $(basename "$archivo")"
+            git push
+          fi
+
+      - name: Construir archivos
+        run: python scripts/construir.py --salida publicar --base-url "$BASE_URL"
+
+      - name: Avisos por issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ -s avisos.txt ]; then
+            titulo="Aviso de datos del mapa"
+            cuerpo=$(printf "Corrida del %s\n\n%s\n\n[Ver la corrida](%s/%s/actions/runs/%s)" "$(date -u +%F)" "$(sed 's/^/- /' avisos.txt)" "$GITHUB_SERVER_URL" "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID")
+            abierto=$(gh issue list --state open --search "in:title \"$titulo\"" --json number --jq '.[0].number')
+            if [ -n "$abierto" ]; then gh issue comment "$abierto" --body "$cuerpo"; else gh issue create --title "$titulo" --body "$cuerpo"; fi
+          fi
+
+      - name: Mantener vivo el trabajo programado (commit mensual)
+        if: github.event_name == 'schedule'
+        run: |
+          if [ "$(date -u +%d)" = "01" ]; then
+            mkdir -p estado
+            cp publicar/v1/indice.json estado/ultima_corrida.json
+            git config user.name "GS Brokers (automático)"
+            git config user.email "333556446+gsbrokers-mx@users.noreply.github.com"
+            git pull -q --rebase
+            git add estado/ultima_corrida.json
+            git commit -m "Estado mensual de los datos" && git push || true
+          fi
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: publicar
+
+  publicar:
+    needs: construir
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@v4

@@ -1,0 +1,19 @@
+{
+  "_ayuda": "Correcciones a mano para escuelas. Cada entrada busca, dentro de 'radio' metros de lat/lng, los registros cuyo nombre contenga alguno de los 'alias' (en MAYÚSCULAS, sin acentos), los junta en un solo punto y le impone nombre, niveles, sostenimiento y principal. Si no encuentra ninguno, lo agrega. Niveles válidos: preescolar, primaria, secundaria, preparatoria, universidad, otras.",
+  "escuelas": [
+    {
+      "nombre": "ITEA Campus Zapopan",
+      "alias": ["EDUCACION AVANZADA", "ITEA"],
+      "lat": 20.75502, "lng": -103.42716, "radio": 1500,
+      "niveles": ["preescolar", "primaria", "secundaria", "preparatoria"],
+      "sostenimiento": "privado", "principal": true
+    },
+    {
+      "nombre": "ITEA Campus Tlaquepaque",
+      "alias": ["EDUCACION AVANZADA", "ITEA"],
+      "lat": 20.55870, "lng": -103.36476, "radio": 400,
+      "niveles": ["preescolar", "primaria", "secundaria", "preparatoria"],
+      "sostenimiento": "privado", "principal": true
+    }
+  ]
+}

@@ -1,0 +1,33 @@
+{
+  "_ayuda": "Cadenas que se clasifican por marca o nombre, nunca por la etiqueta shop de OSM. Para agregar una: copia un bloque y cambia marca, patrones (expresiones regulares sobre el nombre en MAYÚSCULAS y sin acentos), clave y principal. 'no_principal_si' quita el anillo dorado a formatos chicos (p. ej. EXPRESS).",
+  "marcas": [
+    { "marca": "Sodimac", "patrones": ["\\bSODIMAC\\b"], "clave": "comercio:hogar", "principal": true },
+    { "marca": "The Home Depot", "patrones": ["\\bHOME DEPOT\\b"], "clave": "comercio:hogar", "principal": true },
+    { "marca": "Costco", "patrones": ["\\bCOSTCO\\b"], "clave": "comercio:super", "principal": true },
+    { "marca": "Sam's Club", "patrones": ["\\bSAM'?S( CLUB)?\\b"], "clave": "comercio:super", "principal": true },
+    { "marca": "Walmart", "patrones": ["\\bWAL-?MART\\b"], "clave": "comercio:super", "principal": true, "no_principal_si": ["EXPRESS"] },
+    { "marca": "Bodega Aurrera", "patrones": ["\\bBODEGA AURRERA\\b", "\\bMI BODEGA\\b"], "clave": "comercio:super", "principal": true, "no_principal_si": ["EXPRESS", "MI BODEGA"] },
+    { "marca": "Soriana", "patrones": ["\\bSORIANA\\b"], "clave": "comercio:super", "principal": true, "no_principal_si": ["EXPRESS"] },
+    { "marca": "Chedraui", "patrones": ["\\bCHEDRAUI\\b"], "clave": "comercio:super", "principal": true, "no_principal_si": ["SELECTO EXPRESS", "SUPERCHE"] },
+    { "marca": "La Comer", "patrones": ["\\bLA COMER\\b", "\\bFRESKO\\b", "\\bCITY MARKET\\b", "\\bSUMESA\\b"], "clave": "comercio:super", "principal": true, "no_principal_si": ["SUMESA"] },
+    { "marca": "Liverpool", "patrones": ["\\bLIVERPOOL\\b"], "clave": "comercio:centros", "principal": true, "no_principal_si": ["EXPRESS", "DUTY"] },
+    { "marca": "El Palacio de Hierro", "patrones": ["\\bPALACIO DE HIERRO\\b"], "clave": "comercio:centros", "principal": true },
+    { "marca": "Office Depot", "patrones": ["\\bOFFICE DEPOT\\b"], "clave": "comercio:oficina", "principal": true },
+    { "marca": "OfficeMax", "patrones": ["\\bOFFICE ?MAX\\b"], "clave": "comercio:oficina", "principal": true },
+    { "marca": "Farmacias Guadalajara", "patrones": ["\\bFARMACIAS? GUADALAJARA\\b"], "clave": "salud:farmacias", "principal": false },
+    { "marca": "Farmacias del Ahorro", "patrones": ["\\bFARMACIAS? DEL AHORRO\\b"], "clave": "salud:farmacias", "principal": false },
+    { "marca": "Farmacias Benavides", "patrones": ["\\bBENAVIDES\\b"], "clave": "salud:farmacias", "principal": false },
+    { "marca": "BBVA", "patrones": ["\\bBBVA\\b", "\\bBANCOMER\\b"], "clave": "bancos:bancos", "principal": false },
+    { "marca": "Santander", "patrones": ["\\bSANTANDER\\b"], "clave": "bancos:bancos", "principal": false },
+    { "marca": "Banorte", "patrones": ["\\bBANORTE\\b"], "clave": "bancos:bancos", "principal": false },
+    { "marca": "Banamex", "patrones": ["\\bBANAMEX\\b", "\\bCITIBANAMEX\\b"], "clave": "bancos:bancos", "principal": false },
+    { "marca": "HSBC", "patrones": ["\\bHSBC\\b"], "clave": "bancos:bancos", "principal": false },
+    { "marca": "Scotiabank", "patrones": ["\\bSCOTIA ?BANK\\b"], "clave": "bancos:bancos", "principal": false },
+    { "marca": "Inbursa", "patrones": ["\\bINBURSA\\b"], "clave": "bancos:bancos", "principal": false },
+    { "marca": "Banco Azteca", "patrones": ["\\bBANCO AZTECA\\b"], "clave": "bancos:bancos", "principal": false },
+    { "marca": "BanCoppel", "patrones": ["\\bBANCOPPEL\\b"], "clave": "bancos:bancos", "principal": false },
+    { "marca": "Banregio", "patrones": ["\\bBANREGIO\\b"], "clave": "bancos:bancos", "principal": false },
+    { "marca": "Banco del Bajío", "patrones": ["\\bBAN ?BAJIO\\b", "\\bBANCO DEL BAJIO\\b"], "clave": "bancos:bancos", "principal": false },
+    { "marca": "Afirme", "patrones": ["\\bAFIRME\\b"], "clave": "bancos:bancos", "principal": false }
+  ]
+}

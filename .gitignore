@@ -1,0 +1,7 @@
+.cache/
+publicar/
+avisos.txt
+__pycache__/
+*.pyc
+fuentes/sep/entrada/*
+!fuentes/sep/entrada/LEEME.md
