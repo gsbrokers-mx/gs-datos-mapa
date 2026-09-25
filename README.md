@@ -18,7 +18,7 @@ solo cuando los necesita: por zona y por capa.
 | `v1/<zona>/bancos.json` | `bancos:bancos`, `bancos:gobierno` |
 | `v1/<zona>/comercio.json` | `comercio:centros`, `comercio:super`, `comercio:hogar`, `comercio:oficina` |
 | `v1/<zona>/otros.json` | `otros:estadios`, `otros:monumentos`, `otros:museos` |
-| `v1/<zona>/parques.json` | `parques:todo` (con ficha en Wikidata o de 5 ha o más; `hectareas` aproximadas) |
+| `v1/<zona>/parques.json` | `parques:todo` (solo parques grandes: 20 ha o más, o 5 ha con ficha en Wikidata; `hectareas` aproximadas; todos principales) |
 | `v1/<zona>/referencias.json` | `referencias:empresa`, `:parque_industrial`, `:deporte`, `:eventos`, `:gimnasio` |
 | `v1/<zona>/salones.json` | `referencias:salon` — salones de fiestas; `filtro: false` (sin casilla, puntos pequeños) |
 | `v1/<zona>/tren.geojson` | Líneas (con color) y estaciones de tren ligero / metro |
@@ -55,7 +55,7 @@ El mapa lo muestra en `educacion:<nivel>` si el nivel está en la lista. `sosten
 - **Principales** (anillo dorado): hospitales e instituciones de salud públicas (IMSS, ISSSTE, SSA, Cruz Verde,
   Cruz Roja, DIF…), universidades, colegios privados con dos o más niveles, grandes cadenas por marca
   (formatos "Express" no), parques y monumentos con ficha en Wikidata, estadios, presidencias municipales y
-  centros de trámites clave (CISZ, SAT, recaudadoras, unidades administrativas…). Parques: principales si tienen ficha en Wikidata o miden 20 ha o más.
+  centros de trámites clave (CISZ, SAT, recaudadoras, unidades administrativas…). Parques: solo los grandes, todos principales; plazas emblemáticas chicas van a monumentos.
 - **Cadenas**: por nombre o marca (`config/marcas.json`), nunca por la etiqueta `shop` de OSM.
 - **Gobierno**: `office=government`, `government=*`, `amenity=townhall`, sin centros comunitarios ni clubes.
 - **Referencias (DENUE)**: empresas con 251 o más empleados (sin comercio al por menor, escuelas, salud ni
@@ -77,6 +77,7 @@ El mapa lo muestra en `educacion:<nivel>` si el nivel está en la lista. `sosten
 
 - **Otra cadena**: agrega un bloque en `config/marcas.json` (patrón sobre el nombre en MAYÚSCULAS sin acentos).
 - **Corregir una escuela**: agrega una entrada en `config/escuelas_manual.json`.
+- **Agregar un lugar que OSM no trae** (p. ej. Bosque Los Colomos): `config/lugares_manual.json`.
 - **Otra ciudad**: agrega una zona en `config/zonas.json` (entidad, municipios con su clave INEGI, `bbox`
   y capas). El DENUE y CLUES se filtran por entidad y municipio; OSM, por los polígonos municipales.
 

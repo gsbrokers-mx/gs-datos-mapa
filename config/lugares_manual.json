@@ -1,0 +1,13 @@
+{
+  "_ayuda": "Lugares que OSM no trae o trae mal. Por zona. Cada entrada se agrega tal cual; si trae 'reemplaza' (expresión regular sobre el nombre en MAYÚSCULAS sin acentos), antes se quitan los puntos de OSM de la misma clave cuyo nombre coincida.",
+  "zmg": [
+    {
+      "nombre": "Bosque Los Colomos", "lat": 20.70661, "lng": -103.39259,
+      "clave": "parques:todo", "principal": true, "reemplaza": "COLOMOS"
+    },
+    {
+      "nombre": "Bosque La Primavera", "lat": 20.63500, "lng": -103.57000,
+      "clave": "parques:todo", "principal": true, "reemplaza": "FLORA Y FAUNA LA PRIMAVERA"
+    }
+  ]
+}

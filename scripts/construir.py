@@ -10,6 +10,7 @@ import argparse
 import collections
 import datetime as dt
 import json
+import re
 import sys
 import traceback
 from pathlib import Path
@@ -21,7 +22,7 @@ import denue
 import osm
 import sep
 import transporte
-from comun import RAIZ, UA, config, distancia, escribir_json, log
+from comun import RAIZ, UA, config, distancia, escribir_json, log, norm, punto
 
 VERSION = "v1"
 DESCRIPCION = {
@@ -97,6 +98,24 @@ CAPAS = {
 }
 
 
+CATEGORIAS_CAPA = {"educacion": {"escuelas"}, "referencias": {"referencias"}, "salones": {"referencias"}}
+
+
+def aplicar_manual(zona, capa, puntos):
+    """Agrega los lugares de config/lugares_manual.json que tocan a esta zona y capa."""
+    for m in config("lugares_manual.json").get(zona, []):
+        if m["clave"].split(":")[0] not in CATEGORIAS_CAPA.get(capa, {capa}):
+            continue
+        if (capa == "salones") != (m["clave"] == "referencias:salon"):
+            continue
+        if m.get("reemplaza"):
+            rx = re.compile(m["reemplaza"])
+            puntos = [p for p in puntos if not (p["clave"] == m["clave"] and rx.search(norm(p["nombre"])))]
+        extra = {k: v for k, v in m.items() if k not in ("nombre", "lat", "lng", "clave", "principal", "reemplaza")}
+        puntos.append(punto(m["nombre"], m["lat"], m["lng"], m["clave"], m.get("principal", False), "Manual", **extra))
+    return puntos
+
+
 def anterior(base_url, ruta_rel):
     if not base_url:
         return None
@@ -141,7 +160,7 @@ def main():
                     conteo = collections.Counter(f["properties"]["tipo"] for f in datos["features"])
                     fuentes_capa = ["OpenStreetMap"]
                 else:
-                    puntos = CAPAS[capa](z)
+                    puntos = aplicar_manual(clave, capa, CAPAS[capa](z))
                     mil = z.militares()
                     antes = len(puntos)
                     puntos = [p for p in puntos if not mil.contiene(p["lat"], p["lng"])]

@@ -12,8 +12,9 @@ IGNORAR_AMENITY = {"atm", "parking", "parking_entrance", "parking_space", "fuel"
 IGNORAR_CLAVES = ("highway", "railway", "public_transport", "route", "entrance", "barrier", "power", "waterway")
 NO_ES_GOBIERNO = re.compile(r"\bCLUB\b|CENTRO COMUNITARIO|DESARROLLO COMUNITARIO|SALON\b|\bCOTO\b|FRACCIONAMIENTO"
                             r"|ASOCIACION DE COLONOS|BIBLIOTECA|MUEBLERIA|CASA EJIDAL|^EJIDO\b")
-# Parques: con ficha en Wikidata/Wikipedia o de al menos 5 ha; principales si tienen ficha o 20 ha o más
-PARQUE_MIN_HA, PARQUE_PRINCIPAL_HA, PARQUE_MAX_HA_SIN_FICHA = 5, 20, 1000
+# Parques: solo los grandes (20 ha o más, o 5 ha con ficha en Wikidata/Wikipedia); todos principales.
+# Plazas con ficha pero chicas van a otros:monumentos. Superficie aproximada por el recuadro del polígono.
+PARQUE_MIN_HA, PARQUE_MIN_HA_CON_FICHA, PARQUE_MAX_HA_SIN_FICHA = 20, 5, 1000
 GOBIERNO_PRINCIPAL = re.compile(
     r"\bCISZ\b|CENTRO INTEGRAL DE SERVICIOS|UNIDAD ADMINISTRATIVA|PRESIDENCIA MUNICIPAL|PALACIO (MUNICIPAL|DE GOBIERNO)"
     r"|AYUNTAMIENTO|CENTRO ADMINISTRATIVO|CIUDAD JUDICIAL|CASA JALISCO|\bSAT\b|PASAPORTES|DELEGACION (DE LA )?SRE|RECAUDADORA")
@@ -72,9 +73,10 @@ out center tags;"""
 );
 out tags bb;"""
     vistos, salida = set(), []
-    for el in overpass(q_general, f"general_{clave_zona}")["elements"] + \
-            overpass(q_marcas, f"marcas_{clave_zona}")["elements"] + \
-            overpass(q_parques, f"parques_{clave_zona}")["elements"]:
+    # parques primero: su consulta trae el recuadro (bounds) para calcular la superficie
+    for el in overpass(q_parques, f"parques_{clave_zona}")["elements"] + \
+            overpass(q_general, f"general_{clave_zona}")["elements"] + \
+            overpass(q_marcas, f"marcas_{clave_zona}")["elements"]:
         if (el["type"], el["id"]) not in vistos:
             vistos.add((el["type"], el["id"]))
             salida.append(el)
@@ -180,9 +182,10 @@ def clasificar(zona, clave_zona):
             ficha = bool(t.get("wikidata") or t.get("wikipedia"))
             if ha > PARQUE_MAX_HA_SIN_FICHA and not ficha:
                 continue  # áreas de protección enormes: su punto central no ayuda a ubicarse
-            if ficha or ha >= PARQUE_MIN_HA:
-                puntos.append(punto(nombre, lat, lng, "parques:todo", ficha or ha >= PARQUE_PRINCIPAL_HA, FUENTE,
-                                    hectareas=round(ha) if ha else None, **extra))
+            if ha >= PARQUE_MIN_HA or (ficha and ha >= PARQUE_MIN_HA_CON_FICHA):
+                puntos.append(punto(nombre, lat, lng, "parques:todo", True, FUENTE, hectareas=round(ha), **extra))
+            elif ficha:  # plazas y jardines emblemáticos pero chicos
+                puntos.append(punto(nombre, lat, lng, "otros:monumentos", True, FUENTE, **extra))
         elif t.get("wikidata") and (t.get("historic") in ("monument", "memorial") or t.get("tourism") == "attraction"):
             puntos.append(punto(nombre, lat, lng, "otros:monumentos", True, FUENTE, **extra))
 
