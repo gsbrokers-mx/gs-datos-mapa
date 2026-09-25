@@ -22,7 +22,7 @@ import denue
 import osm
 import sep
 import transporte
-from comun import RAIZ, UA, config, distancia, escribir_json, log, norm, punto
+from comun import RAIZ, UA, config, deduplicar, distancia, es_generico, escribir_json, log, norm, parecido, punto
 
 VERSION = "v1"
 DESCRIPCION = {
@@ -71,6 +71,13 @@ class Zona:
             self._refs = denue.referencias(self.cfg)
         return self._refs
 
+    def reconocidas(self):
+        try:
+            return osm.escuelas_reconocidas(self.cfg, self.clave)
+        except Exception as e:  # noqa: BLE001
+            log(f"   AVISO: sin escuelas con ficha en Wikidata ({e})")
+            return []
+
     def de_osm(self, prefijos):
         return [p for p in self.osm() if p["clave"].split(":")[0] in prefijos]
 
@@ -88,12 +95,15 @@ def capa_salud(z):
 
 CAPAS = {
     "salud": capa_salud,
-    "educacion": lambda z: sep.escuelas(z.cfg),
+    "educacion": lambda z: sep.escuelas(z.cfg, reconocidas=z.reconocidas()),
     "bancos": lambda z: z.de_osm({"bancos"}),
     "comercio": lambda z: z.de_osm({"comercio"}),
     "otros": lambda z: z.de_osm({"otros"}),
     "parques": lambda z: z.de_osm({"parques"}),
-    "referencias": lambda z: z.refs()[0] + [p for p in z.osm() if p["clave"].startswith("referencias:")],
+    # DENUE primero; lo de OSM (canchas, clubes, kartódromos) entra si no repite un lugar cercano con nombre parecido
+    "referencias": lambda z: deduplicar(
+        z.refs()[0] + [p for p in z.osm() if p["clave"].startswith("referencias:")], metros=150,
+        similares=lambda p, q: parecido(p["nombre"], q["nombre"]) >= 0.5),
     "salones": lambda z: z.refs()[1],
 }
 
@@ -114,6 +124,27 @@ def aplicar_manual(zona, capa, puntos):
         extra = {k: v for k, v in m.items() if k not in ("nombre", "lat", "lng", "clave", "principal", "reemplaza")}
         puntos.append(punto(m["nombre"], m["lat"], m["lng"], m["clave"], m.get("principal", False), "Manual", **extra))
     return puntos
+
+
+def validar(capa, puntos):
+    """Errores que impiden publicar: exceso de principales, nombres genéricos, gobierno con marca comercial."""
+    reglas = config("validacion.json")
+    errores = []
+    tope = reglas["max_principales_pct"].get(capa)
+    if tope is not None and puntos:
+        pct = 100 * sum(p["principal"] for p in puntos) / len(puntos)
+        if pct > tope:
+            errores.append(f"{capa}: {pct:.1f}% de principales (máximo {tope}%)")
+    genericos = sorted({p["nombre"] or "(vacío)" for p in puntos if es_generico(p["nombre"])})
+    if genericos:
+        errores.append(f"{capa}: {len(genericos)} nombres genéricos o vacíos: {', '.join(genericos[:10])}")
+    marcas = [re.compile(x) for m in config("marcas.json")["marcas"] for x in m["patrones"]]
+    prohibidas = [re.compile(x) for x in reglas["gobierno_prohibidas"]]
+    malos = sorted({p["nombre"] for p in puntos if p["clave"] == "bancos:gobierno"
+                    and (p.get("marca") or any(r.search(norm(p["nombre"])) for r in marcas + prohibidas))})
+    if malos:
+        errores.append(f"{capa}: gobierno con marca comercial: {', '.join(malos[:10])}")
+    return errores
 
 
 def anterior(base_url, ruta_rel):
@@ -142,6 +173,7 @@ def main():
     ahora = dt.datetime.now(dt.timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
     indice = {"version": VERSION, "generado": ahora, "fuentes": FUENTES, "zonas": {}}
     avisos = []
+    errores_validacion = []
 
     for clave in elegidas:
         cfg = zonas_cfg[clave]
@@ -168,6 +200,10 @@ def main():
                         log(f"   {antes - len(puntos)} puntos dentro de zonas militares, ocultos")
                     puntos.sort(key=lambda p: (p["clave"], not p["principal"], p["nombre"]))
                     conteo = collections.Counter(p["clave"] for p in puntos)
+                    errores = validar(capa, puntos)
+                    for err in errores:
+                        log(f"   VALIDACIÓN: {err}")
+                    errores_validacion += [f"{clave}/{err}" for err in errores]
                     fuentes_capa = sorted({f for p in puntos for f in p["fuente"].split(" + ")})
                     datos = {"zona": clave, "capa": capa, "generado": ahora,
                              "fuentes": {f: FUENTES[f] for f in fuentes_capa}, "puntos": puntos}
@@ -204,6 +240,7 @@ def main():
         if meses > 13:
             avisos.append(f"El catálogo de la SEP es del {info_sep['fecha']} ({meses:.0f} meses). "
                           "Toca actualizarlo: ver README, sección 'Actualizar la SEP'.")
+    avisos += [f"VALIDACIÓN {e}" for e in errores_validacion]
     indice["avisos"] = avisos
     escribir_json(salida / VERSION / "indice.json", indice)
     (salida / ".nojekyll").write_text("", encoding="utf-8")
@@ -214,6 +251,9 @@ def main():
     Path(RAIZ / "avisos.txt").write_text("\n".join(avisos), encoding="utf-8")
     if avisos:
         log("\nAVISOS:\n- " + "\n- ".join(avisos))
+    if errores_validacion:
+        log("\nLa validación falló: no se publica (sigue en línea la versión anterior).")
+        return 1
     return 0
 
 

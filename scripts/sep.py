@@ -15,7 +15,7 @@ import zipfile
 from pathlib import Path
 
 import denue
-from comun import RAIZ, arreglar, config, distancia, log, norm, parecido, punto
+from comun import RAIZ, arreglar, completar, config, distancia, log, norm, parecido, punto
 
 SEP_GZ = RAIZ / "fuentes" / "sep" / "escuelas.csv.gz"
 SEP_META = RAIZ / "fuentes" / "sep" / "escuelas.json"
@@ -147,7 +147,36 @@ def _indexar(lista):
     return indice
 
 
-def escuelas(zona):
+# Principales (anillo dorado): planteles de nivel superior con nombre de universidad, tecnológico o normal,
+# colegios particulares con 3 niveles o más, escuelas reconocidas (lista curada o ficha en Wikidata)
+# y correcciones a mano. Una escuela pública de educación básica o media de un solo nivel nunca es principal.
+UNIVERSIDAD = re.compile(r"UNIVERSIDAD|UNIVERSITARI|TECNOLOGICO|POLITECNIC|NORMAL|ITESO|ESCUELA SUPERIOR"
+                         r"|CENTRO DE ENSENANZA TECNICA|\bCETI\b|CENTRO UNIVERSITARIO")
+
+
+def _reconocida(e, patrones, reconocidas):
+    nombres = [e["nombre"], *e.get("nombres", [])]
+    if any(p.search(norm(n)) for p in patrones for n in nombres):
+        return True
+    for lat, lng, nombre in reconocidas:
+        d = distancia(e["lat"], e["lng"], lat, lng)
+        if d < 60 or (d < 250 and max(parecido(nombre, n) for n in nombres) >= 0.34):
+            return True
+    return False
+
+
+def es_principal(e, niveles, patrones, reconocidas):
+    reales = [n for n in niveles if n not in ("otras", "varios")]
+    if e["sostenimiento"] == "publico" and len(reales) <= 1 and "universidad" not in reales:
+        return False
+    if "universidad" in niveles and any(UNIVERSIDAD.search(norm(n)) for n in [e["nombre"], *e.get("nombres", [])]):
+        return True
+    if e["sostenimiento"] == "privado" and len(reales) >= 3:
+        return True
+    return _reconocida(e, patrones, reconocidas)
+
+
+def escuelas(zona, reconocidas=()):
     base = denue.escuelas(zona)
     # 1) juntar registros repetidos del DENUE (mismo colegio en varios edificios o niveles)
     indice = {}
@@ -189,7 +218,10 @@ def escuelas(zona):
             candidato["niveles"] |= s["niveles"]
             candidato["sep"] = True
         elif vigente:
-            unidas.append(dict(s, sep=True))
+            nombre = completar(s["nombre"], *sorted(s["nombres"]))
+            if not nombre:
+                continue  # solo "Jardín de Niños", "Primaria"…: sin nombre útil
+            unidas.append(dict(s, nombre=nombre, sep=True))
             indice.setdefault((int(s["lat"] / 0.005), int(s["lng"] / 0.005)), []).append(unidas[-1])
             solo_sep += 1
     log(f"   SEP: {solo_sep} escuelas que solo están en la SEP se agregaron")
@@ -222,6 +254,7 @@ def escuelas(zona):
 
     # 5) salida
     orden = ["preescolar", "primaria", "secundaria", "preparatoria", "universidad", "otras", "varios"]
+    patrones = [re.compile(p) for p in config("escuelas_principales.json")["patrones"]]
     puntos = []
     for e in unidas:
         if e.get("borrar"):
@@ -230,8 +263,7 @@ def escuelas(zona):
         reales = [n for n in niveles if n not in ("otras", "varios")]
         principal = e.get("principal")
         if principal is None:
-            principal = "universidad" in niveles or (e["sostenimiento"] == "privado" and (
-                len(reales) >= 2 or "varios" in niveles))
+            principal = es_principal(e, niveles, patrones, reconocidas)
         fuentes = [e["fuente"]] + (["SEP"] if e.get("sep") and e["fuente"] != "SEP" else [])
         puntos.append(punto(e["nombre"], e["lat"], e["lng"], "escuelas:todo", principal, " + ".join(fuentes),
                             niveles=niveles, sostenimiento=e["sostenimiento"]))

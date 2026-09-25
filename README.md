@@ -52,18 +52,42 @@ El mapa lo muestra en `educacion:<nivel>` si el nivel está en la lista. `sosten
 
 ## Reglas de clasificación
 
-- **Principales** (anillo dorado): hospitales e instituciones de salud públicas (IMSS, ISSSTE, SSA, Cruz Verde,
-  Cruz Roja, DIF…), universidades, colegios privados con dos o más niveles, grandes cadenas por marca
-  (formatos "Express" no), parques y monumentos con ficha en Wikidata, estadios, presidencias municipales y
-  centros de trámites clave (CISZ, SAT, recaudadoras, unidades administrativas…). Parques: solo los grandes, todos principales; plazas emblemáticas chicas van a monumentos.
+- **Principales** (anillo dorado):
+  - *Salud*: hospitales institucionales; hospitales privados que se llaman hospital, centro médico o
+    sanatorio; unidades institucionales grandes (UMF del IMSS, clínicas del ISSSTE, Cruz Roja, Cruz Verde,
+    clínicas de especialidades). Centros de salud, consultorios y clínicas chicas no.
+  - *Escuelas*: planteles de nivel superior con nombre de universidad, tecnológico o normal; colegios
+    particulares con 3 niveles o más; escuelas reconocidas (`config/escuelas_principales.json` o ficha en
+    Wikidata en OSM); correcciones a mano. Una escuela pública de un solo nivel (básica o media) nunca.
+  - *Otros*: grandes cadenas por marca (formatos "Express" no), parques grandes, monumentos y plazas con
+    ficha en Wikidata, estadios, presidencias municipales y centros de trámites clave (CISZ, SAT,
+    recaudadoras, unidades administrativas…).
 - **Cadenas**: por nombre o marca (`config/marcas.json`), nunca por la etiqueta `shop` de OSM.
-- **Gobierno**: `office=government`, `government=*`, `amenity=townhall`, sin centros comunitarios ni clubes.
-- **Referencias (DENUE)**: empresas con 251 o más empleados (sin comercio al por menor, escuelas, salud ni
-  gobierno, que ya tienen su capa), parques industriales, instalaciones deportivas, gimnasios y recintos
-  de eventos de cualquier tamaño. Solo establecimientos con nombre.
+- **Gobierno**: `government=*`, `amenity=townhall` u `office=government` **con nombre de dependencia
+  pública** (en OSM hay edificios de empresas mal etiquetados como gobierno). Sin centros comunitarios,
+  clubes, tiendas, marcas ni nombres de la lista `gobierno_prohibidas` (`config/validacion.json`).
+- **Referencias**: del DENUE, empresas con 251 o más empleados (sin comercio al por menor, escuelas, salud
+  ni gobierno, que ya tienen su capa), parques industriales, instalaciones deportivas, gimnasios y
+  recintos de eventos de cualquier tamaño; de OSM, canchas y clubes con nombre y kartódromos.
+- **Nombres genéricos**: si el nombre es solo la categoría ("Hospital", "Unidad Deportiva 51"), se completa
+  con otro campo de la fuente (nombre de la unidad en CLUES, colonia en el DENUE, `official_name` u
+  `operator` en OSM). Si no hay con qué, el punto se descarta.
 - **Zonas militares**: los puntos dentro de `landuse=military` se quitan antes de publicar.
+- **Coordenadas**: solo de fuentes abiertas (CLUES, DENUE, SEP, OSM) o de `config/*_manual.json`
+  (fuente `Manual`). Nunca de Google Maps.
 - Si una fuente falla, se vuelve a publicar la versión anterior de esa capa y se marca en `indice.json`
   (`estado: "anterior"`). Además se abre un *issue* con el aviso.
+
+## Validación
+
+Antes de publicar, cada capa se revisa con `config/validacion.json`. Si algo no cumple, **la corrida
+falla, no se publica nada y sigue en línea la versión anterior**; se abre un *issue* con el detalle.
+
+- Porcentaje de principales por capa por encima del tope (salud 30 %, escuelas 10 %, bancos y gobierno
+  15 %, referencias 5 %, salones 0 %; comercio 60 %, otros 75 % y parques 100 % porque ya son solo
+  lugares clave).
+- Cualquier nombre genérico o vacío.
+- Un punto de gobierno con marca comercial o con un nombre de la lista `gobierno_prohibidas`.
 
 ## Fuentes y créditos
 
@@ -77,6 +101,7 @@ El mapa lo muestra en `educacion:<nivel>` si el nivel está en la lista. `sosten
 
 - **Otra cadena**: agrega un bloque en `config/marcas.json` (patrón sobre el nombre en MAYÚSCULAS sin acentos).
 - **Corregir una escuela**: agrega una entrada en `config/escuelas_manual.json`.
+- **Marcar una escuela como reconocida** (anillo dorado): agrega un patrón en `config/escuelas_principales.json`.
 - **Agregar un lugar que OSM no trae** (p. ej. Bosque Los Colomos): `config/lugares_manual.json`.
 - **Otra ciudad**: agrega una zona en `config/zonas.json` (entidad, municipios con su clave INEGI, `bbox`
   y capas). El DENUE y CLUES se filtran por entidad y municipio; OSM, por los polígonos municipales.

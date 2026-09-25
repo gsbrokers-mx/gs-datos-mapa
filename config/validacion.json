@@ -1,0 +1,18 @@
+{
+  "_ayuda": "Reglas que hacen fallar la corrida (y dejan publicada la versión anterior). 'max_principales_pct': porcentaje máximo de puntos con principal=true por capa; las capas densas (escuelas, salud, bancos, referencias) llevan umbral bajo para no saturar el mapa; las capas que ya son solo lugares clave (parques, otros, comercio por marca) llevan umbral alto. 'gobierno_prohibidas': expresiones (MAYÚSCULAS sin acentos) que nunca pueden estar en un punto de gobierno; también se usan para excluirlos al clasificar.",
+  "max_principales_pct": {
+    "salud": 30,
+    "educacion": 10,
+    "bancos": 15,
+    "comercio": 60,
+    "otros": 75,
+    "parques": 100,
+    "referencias": 5,
+    "salones": 0
+  },
+  "gobierno_prohibidas": [
+    "OXXO", "TOTAL ?ENERGIES", "\\bTOTAL\\b", "PEMEX", "GASOLINER", "\\bGAS\\b", "TELMEX", "TELCEL", "CONSTRUCTORA",
+    "NOTARIA", "INMOBILIARIA", "\\bS\\.? ?A\\.?( DE C\\.? ?V\\.?)?$", "\\bA\\.? ?C\\.?$", "\\bS\\.? ?C\\.?$",
+    "TERMINAL DE AUTOBUSES", "CORPORATIVO", "HOTEL", "RESTAURANT", "\\bBANCO\\b(?! NACIONAL)"
+  ]
+}

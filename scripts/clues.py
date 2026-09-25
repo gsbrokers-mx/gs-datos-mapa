@@ -5,7 +5,7 @@ from functools import lru_cache
 import openpyxl
 import requests
 
-from comun import UA, descargar, log, norm, punto, titulo
+from comun import UA, completar, descargar, log, norm, punto, titulo
 
 FUENTE = "CLUES"
 PAGINA = "http://www.dgis.salud.gob.mx/contenidos/intercambio/clues_gobmx.html"
@@ -19,6 +19,25 @@ INSTITUCIONES = {
 }
 # Tipologías que no sirven como referencia en el mapa
 EXCLUIR_TIPOLOGIA = re.compile(r"ADYACENTE A FARMACIA|UNIDAD MOVIL|CENTRO DE TRABAJO|ALMACEN|OFICINAS")
+# Principales (anillo dorado): hospitales institucionales; hospitales privados que se llaman hospital,
+# centro médico o sanatorio; y unidades institucionales grandes de consulta (UMF, clínicas del ISSSTE,
+# Cruz Roja, Cruz Verde, clínicas de especialidades). Centros de salud, consultorios y clínicas chicas no.
+HOSPITAL_GRANDE = re.compile(r"HOSPITAL|CENTRO MEDICO|SANATORIO|MATERNIDAD|CRUZ (ROJA|VERDE)")
+CONSULTA_GRANDE = re.compile(r"\bUMF\b|\bCMF\b|MEDICINA FAMILIAR|CRUZ (VERDE|ROJA)|CLINICA HOSPITAL|ESPECIALIDADES"
+                             r"|UNIDAD DE URGENCIAS|HOSPITALITO|\bUMAA\b|\bUMAE\b")
+INST_CONSULTA_GRANDE = {"IMSS", "IMSS-Bienestar", "ISSSTE", "Cruz Roja", "Servicios Médicos Municipales",
+                        "Servicios Médicos Estatales", "Pemex", "Sedena"}
+
+
+def es_principal(hospital, inst, nombre, tipologia):
+    n = norm(nombre) + " " + tipologia
+    if hospital:
+        return bool(inst) or bool(HOSPITAL_GRANDE.search(n))
+    if inst == "ISSSTE":
+        return True
+    return inst in INST_CONSULTA_GRANDE and bool(CONSULTA_GRANDE.search(n))
+
+
 RAZON_SOCIAL = re.compile(r",?\s+(S\.?\s?A\.?\s?P?\.?\s?I?\.?\s?(DE\s+C\.?\s?V\.?)?|S\.?\s?C\.?|A\.?\s?C\.?|S\.?\s?DE\s+R\.?\s?L\.?.*)\s*$")
 
 
@@ -56,14 +75,17 @@ def salud(zona):
             continue
         hospital = tipo == "DE HOSPITALIZACION"
         inst = INSTITUCIONES.get(r["CLAVE DE LA INSTITUCION"])
-        nombre = (r["NOMBRE COMERCIAL"] or "").strip() or (r["NOMBRE DE LA UNIDAD"] or "").strip()
-        nombre = titulo(RAZON_SOCIAL.sub("", nombre.upper()).strip(" ,."))
+        limpio = [titulo(RAZON_SOCIAL.sub("", (x or "").strip().upper()).strip(" ,."))
+                  for x in (r["NOMBRE COMERCIAL"], r["NOMBRE DE LA UNIDAD"])]
+        nombre = completar(limpio[0], limpio[1])
+        if not nombre:
+            continue  # nombre vacío o solo la categoría ("Hospital") en ambos campos
         if inst and inst not in nombre and not re.search(r"\b(IMSS|ISSSTE|CRUZ|DIF|UMF)\b", norm(nombre)):
             nombre = f"{nombre} ({inst})" if len(nombre) < 60 else nombre
         if re.search(r"DENTAL|ODONTOL", tipologia + " " + norm(nombre)):
             clave = "salud:dentales"
         else:
             clave = "salud:hospitales" if hospital else "salud:clinicas"
-        puntos.append(punto(nombre, lat, lng, clave, hospital or bool(inst), FUENTE,
+        puntos.append(punto(nombre, lat, lng, clave, es_principal(hospital, inst, nombre, tipologia), FUENTE,
                             institucion=inst or "Privado"))
     return puntos

@@ -6,7 +6,7 @@ import statistics
 import zipfile
 from functools import lru_cache
 
-from comun import arreglar, deduplicar, descargar, log, norm, parecido, punto
+from comun import arreglar, completar, deduplicar, descargar, es_generico, log, norm, parecido, punto, titulo
 
 FUENTE = "INEGI DENUE"
 URL = "https://www.inegi.org.mx/contenidos/masiva/denue/denue_{ent}_csv.zip"
@@ -54,6 +54,7 @@ def filas(entidad, municipios):
                 "personal": r["per_ocu"],
                 "tipo_centro": norm(arreglar(r["tipoCenCom"])),
                 "nombre_centro": arreglar(r["nom_CenCom"]).strip(),
+                "colonia": arreglar(r["nomb_asent"]).strip(),
                 "lat": lat, "lng": lng,
             })
     log(f"   DENUE {entidad}: {len(salida)} establecimientos en la zona")
@@ -62,6 +63,13 @@ def filas(entidad, municipios):
 
 def _con_nombre(n):
     return not SIN_NOMBRE.search(norm(n))
+
+
+def nombre_util(r):
+    """Nombre del establecimiento; si es genérico ("Unidad Deportiva 51") se completa con la colonia."""
+    col = r.get("colonia", "")
+    con_colonia = f"{titulo(r['nombre'])} (Col. {titulo(col)})" if col and not es_generico(col) else None
+    return completar(r["nombre"], con_colonia)
 
 
 def _nombre_parque(n):
@@ -100,7 +108,8 @@ def referencias(zona):
         elif c in EVENTOS:
             tipo = "eventos"
         elif c in SALONES:
-            if _con_nombre(n):
+            n = nombre_util(r)
+            if n and _con_nombre(n):
                 salones.append(punto(n, r["lat"], r["lng"], "referencias:salon", False, FUENTE,
                                      tipo="salon", filtro=False))
             continue
@@ -108,7 +117,8 @@ def referencias(zona):
             tipo = "empresa"
         else:
             continue
-        if not _con_nombre(n):
+        n = nombre_util(r)
+        if not n or not _con_nombre(n):
             continue
         refs.append(punto(n, r["lat"], r["lng"], f"referencias:{tipo}", False, FUENTE, tipo=tipo))
 
@@ -132,16 +142,24 @@ def referencias(zona):
     return refs, salones
 
 
+# Oficinas administrativas que el DENUE registra con código de escuela (sobre todo de universidades)
+NO_ES_ESCUELA = re.compile(
+    r"COORDINACION|DEFENSORIA|\bOFICINAS?\b|CONTROL DOCUMENTAL|TRANSPARENCIA|ARCHIVO GENERAL|BIBLIOTECAS"
+    r"|SERVICIOS A LA COMUNIDAD|UNIDAD DEPORTIVA|COMPLEJO DEPORTIVO|SEGURIDAD UNIVERSITARIA|\bSUPERVISION\b"
+    r"|\bJEFATURA\b|DIRECCION DE|SECRETARIA DE|SINDICATO|PATRONATO|SOCIEDAD DE PADRES|ASOCIACION DE PADRES")
+
+
 def escuelas(zona):
     """Escuelas del DENUE con nivel y sostenimiento según SCIAN."""
     rows = filas(zona["entidad"], tuple(sorted(zona["municipios"])))
     salida = []
     for r in rows:
         nivel = NIVEL_SCIAN.get(r["scian"][:5])
-        if not nivel or not _con_nombre(r["nombre"]):
+        nombre = nombre_util(r)
+        if not nivel or not nombre or not _con_nombre(nombre) or NO_ES_ESCUELA.search(norm(nombre)):
             continue
         salida.append({
-            "nombre": r["nombre"], "lat": r["lat"], "lng": r["lng"],
+            "nombre": nombre, "lat": r["lat"], "lng": r["lng"],
             "niveles": {nivel},
             "sostenimiento": "privado" if r["scian"].endswith("1") else "publico",
             "fuente": FUENTE,

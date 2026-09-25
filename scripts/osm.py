@@ -2,7 +2,7 @@
 import math
 import re
 
-from comun import Poligonos, armar_anillos, config, deduplicar, norm, overpass, punto
+from comun import Poligonos, armar_anillos, completar, config, deduplicar, norm, overpass, punto
 
 FUENTE = "OpenStreetMap"
 
@@ -15,6 +15,24 @@ NO_ES_GOBIERNO = re.compile(r"\bCLUB\b|CENTRO COMUNITARIO|DESARROLLO COMUNITARIO
 # Parques: solo los grandes (20 ha o más, o 5 ha con ficha en Wikidata/Wikipedia); todos principales.
 # Plazas con ficha pero chicas van a otros:monumentos. Superficie aproximada por el recuadro del polígono.
 PARQUE_MIN_HA, PARQUE_MIN_HA_CON_FICHA, PARQUE_MAX_HA_SIN_FICHA = 20, 5, 1000
+# office=government sin etiqueta government=* solo cuenta si el nombre suena a dependencia pública
+# (en OSM hay edificios de empresas mal etiquetados, p. ej. "TotalEnergies México").
+VOCABULARIO_GOBIERNO = re.compile(
+    r"MUNICIPAL|GOBIERNO|SECRETARIA|\bDIF\b|\bSAT\b|ADMINISTRACION TRIBUTARIA|REGISTRO|DELEGACION|TESORERIA"
+    r"|RECAUDADORA|UNIDAD ADMINISTRATIVA|CENTRO ADMINISTRATIVO|PRESIDENCIA|PALACIO|AYUNTAMIENTO|JUZGADO|FISCALIA"
+    r"|JUSTICIA|\bSADER\b|\bINE\b|\bIFE\b|INSTITUTO (NACIONAL|MEXICANO|JALISCIENSE|MUNICIPAL|DE INFORMACION)"
+    r"|\bINEGI\b|\bCFE\b|COMISION (FEDERAL|NACIONAL|ESTATAL)|PROFECO|RELACIONES EXTERIORES|CONAFOR|INFONAVIT"
+    r"|IPEJAL|\bFIRA\b|BIENESTAR|MOVILIDAD|OBRAS PUBLICAS|PADRON|LICENCIAS|PARQUES Y JARDINES|SEGURIDAD PUBLICA"
+    r"|PROTECCION (CIVIL|ANIMAL)|POTECCION ANIMAL|CONSEJO MUNICIPAL|ARCHIVO|\bCISZ\b|CENTRO INTEGRAL DE SERVICIOS"
+    r"|FEDERAL|ESTATAL|REGION SANITARIA|INMUJERES|\bIMPI\b|CIRPAC|\bCIR\b|\bSIAPA\b|\bIMSS\b|\bISSSTE\b"
+    r"|GUARDIA NACIONAL|POLICIA|TRANSITO|CASA HOGAR|COMEDOR|MODULO|OFICINA DE ENLACE|CONAGUA|\bSEP\b|EDUCACION"
+    r"|BANCO NACIONAL|\bCRAE\b|\bREDI\b|DIRECCION DE|\bDIPTA\b|CENTRO VEHICULAR|\bCVDI\b|TORRE DE EDUCACION")
+
+
+def prohibida_en_gobierno(n):
+    return any(re.search(p, n) for p in config("validacion.json")["gobierno_prohibidas"])
+
+
 GOBIERNO_PRINCIPAL = re.compile(
     r"\bCISZ\b|CENTRO INTEGRAL DE SERVICIOS|UNIDAD ADMINISTRATIVA|PRESIDENCIA MUNICIPAL|PALACIO (MUNICIPAL|DE GOBIERNO)"
     r"|AYUNTAMIENTO|CENTRO ADMINISTRATIVO|CIUDAD JUDICIAL|CASA JALISCO|\bSAT\b|PASAPORTES|DELEGACION (DE LA )?SRE|RECAUDADORA")
@@ -58,6 +76,8 @@ def elementos(zona, clave_zona):
   nwr["historic"~"^(monument|memorial)$"]["wikidata"]{f};
   nwr["tourism"="attraction"]["wikidata"]{f};
   nwr["sport"="karting"]{f};
+  nwr["leisure"~"^(sports_centre|pitch|track)$"]["name"]{f};
+  nwr["name"~"Kart[oó]dromo|Aut[oó]dromo",i]{f};
 );
 out center tags;"""
     q_marcas = f"""[out:json][timeout:180];{pre}
@@ -137,7 +157,8 @@ def clasificar(zona, clave_zona):
             continue
         if t.get("amenity") in IGNORAR_AMENITY or any(k in t for k in IGNORAR_CLAVES):
             continue
-        nombre = t.get("name") or t.get("brand") or ""
+        nombre = completar(t.get("name") or t.get("brand") or "", t.get("official_name"), t.get("alt_name"),
+                           t.get("operator"), t.get("brand")) or ""
         n = norm(nombre)
         extra = {"wikidata": t.get("wikidata")}
 
@@ -159,19 +180,26 @@ def clasificar(zona, clave_zona):
         # 2) gobierno y trámites (sin centros comunitarios ni clubes)
         if t.get("office") == "government" or "government" in t or t.get("amenity") == "townhall":
             if (t.get("amenity") == "community_centre" or "club" in t or "leisure" in t or "shop" in t
-                    or NO_ES_GOBIERNO.search(n)):
+                    or "brand" in t or "brand:wikidata" in t or NO_ES_GOBIERNO.search(n)
+                    or prohibida_en_gobierno(n)):
                 continue
+            if "government" not in t and t.get("amenity") != "townhall" and not VOCABULARIO_GOBIERNO.search(n):
+                continue  # office=government sin nada que lo confirme
             principal = bool(GOBIERNO_PRINCIPAL.search(n))
             puntos.append(punto(nombre, lat, lng, "bancos:gobierno", principal, FUENTE, **extra))
         elif t.get("amenity") == "bank":
             puntos.append(punto(nombre, lat, lng, "bancos:bancos", False, FUENTE, **extra))
         elif t.get("amenity") == "hospital":
-            puntos.append(punto(nombre, lat, lng, "salud:hospitales", True, FUENTE, **extra))
+            grande = bool(re.search(r"HOSPITAL|CENTRO MEDICO|SANATORIO|MATERNIDAD|CRUZ (ROJA|VERDE)", n))
+            puntos.append(punto(nombre, lat, lng, "salud:hospitales", grande, FUENTE, **extra))
         elif t.get("amenity") == "dentist" or t.get("healthcare") == "dentist":
             puntos.append(punto(nombre, lat, lng, "salud:dentales", False, FUENTE, **extra))
         elif t.get("shop") == "mall":
             puntos.append(punto(nombre, lat, lng, "comercio:centros", bool(t.get("wikidata")), FUENTE, **extra))
-        elif t.get("sport") == "karting":
+        elif (t.get("sport") == "karting" or re.search(r"KARTODROMO|AUTODROMO", n)
+              or t.get("leisure") in ("sports_centre", "pitch", "track")):
+            if t.get("leisure") == "pitch" and not t.get("sport"):
+                continue
             puntos.append(punto(nombre, lat, lng, "referencias:deporte", False, FUENTE, tipo="deporte"))
         elif t.get("leisure") == "stadium":
             puntos.append(punto(nombre, lat, lng, "otros:estadios", True, FUENTE, **extra))
@@ -193,3 +221,19 @@ def clasificar(zona, clave_zona):
     # las cadenas se comparan por marca ("The Home Depot" = "The Home Depot Santa Anita")
     puntos.sort(key=lambda p: (not p["principal"], len(p["nombre"]), p["nombre"]))
     return deduplicar(puntos, metros=250, llave=lambda p: (p["clave"], p.get("marca") or norm(p["nombre"])))
+
+
+def escuelas_reconocidas(zona, clave_zona):
+    """Escuelas con ficha en Wikidata en OSM: [(lat, lng, nombre)]. Sirven para marcar principales."""
+    pre, f = filtro_zona(zona)
+    q = f"""[out:json][timeout:180];{pre}
+(
+  nwr["amenity"~"^(school|university|college|kindergarten)$"]["wikidata"]{f};
+);
+out center tags;"""
+    salida = []
+    for el in overpass(q, f"escuelas_wikidata_{clave_zona}")["elements"]:
+        lat, lng = _coords(el)
+        if lat is not None:
+            salida.append((lat, lng, el.get("tags", {}).get("name", "")))
+    return salida

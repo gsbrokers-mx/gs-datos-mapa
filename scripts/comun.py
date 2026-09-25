@@ -132,6 +132,40 @@ def titulo(s):
     return " ".join(palabras)
 
 
+GENERICOS = {
+    "HOSPITAL", "HOSPITALES", "CLINICA", "CLINICAS", "FARMACIA", "FARMACIAS", "ESCUELA", "ESCUELAS", "BANCO",
+    "BANCOS", "CAJERO", "CONSULTORIO", "CONSULTORIOS", "CONSULTORIO MEDICO", "CONSULTORIO DENTAL", "DENTISTA",
+    "DENTAL", "CLINICA DENTAL", "GIMNASIO", "GYM", "PARQUE", "MUSEO", "ESTADIO", "PRIMARIA", "SECUNDARIA",
+    "PREESCOLAR", "KINDER", "JARDIN DE NINOS", "ESCUELA PRIMARIA", "ESCUELA SECUNDARIA", "CENTRO DE SALUD",
+    "OFICINA", "OFICINAS", "GOBIERNO", "PLAZA", "SALON", "SALON DE EVENTOS", "SALON DE FIESTAS", "BIBLIOTECA",
+    "UNIVERSIDAD", "COLEGIO", "INSTITUTO", "PREPARATORIA", "BACHILLERATO", "GUARDERIA", "CANCHA", "CANCHAS",
+    "CANCHA DE FUTBOL", "CAMPO DE FUTBOL", "UNIDAD DEPORTIVA", "SUPERMERCADO", "TIENDA", "CENTRO COMERCIAL",
+    "EMPRESA", "FABRICA", "BODEGA", "MONUMENTO", "ESTATUA", "AREA VERDE", "JARDIN", "IGLESIA", "TEMPLO",
+    "SIN NOMBRE", "NINGUNO", "ESTACION", "PARQUE INDUSTRIAL", "CENTRO DEPORTIVO", "CLUB DEPORTIVO", "ALBERCA",
+    "SOCCER", "SOCCER FIELD", "FOOTBALL", "FOOTBALL FIELD", "BASKETBALL", "BASKETBALL COURT", "TENNIS COURT",
+    "TENNIS", "PITCH", "SPORTS CENTRE", "SPORTS CENTER", "PLAYGROUND", "SKATEPARK", "SKATE PARK", "PISTA",
+    "CANCHA DE BASQUETBOL", "CANCHA DE BASQUET", "CANCHA DE FUTBOL RAPIDO", "CANCHA DE TENIS", "CANCHA DE VOLEIBOL",
+    "CANCHA MULTIUSOS", "CAMPO", "CAMPO DE BEISBOL", "CAMPO DE SOFTBALL", "CAMPO DEPORTIVO", "FRONTON",
+}
+
+
+def es_generico(nombre):
+    """True si el nombre está vacío o es solo la categoría ("hospital", "Unidad Deportiva 51", "Jardín de Niños")."""
+    base = re.sub(r"\b(NO|NUM|NUMERO)\b", " ", re.sub(r"[^A-Z ]", " ", norm(nombre)))
+    base = re.sub(r"^(EL|LA|LOS|LAS)\s+", "", re.sub(r"\s+", " ", base).strip())
+    return not base or base in GENERICOS
+
+
+def completar(nombre, *alternativas):
+    """Devuelve el nombre si no es genérico; si lo es, la primera alternativa útil; si no hay, None."""
+    if not es_generico(nombre):
+        return nombre
+    for alt in alternativas:
+        if alt and not es_generico(alt):
+            return alt
+    return None
+
+
 PALABRAS_VACIAS = {
     "DE", "DEL", "LA", "LAS", "LOS", "EL", "Y", "E", "A", "EN", "S", "C", "V", "SA", "CV", "AC", "SC",
     "ESCUELA", "COLEGIO", "INSTITUTO", "JARDIN", "NINOS", "PRIMARIA", "SECUNDARIA", "PREESCOLAR",

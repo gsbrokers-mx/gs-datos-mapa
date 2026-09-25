@@ -1,0 +1,28 @@
+{
+  "_ayuda": "Escuelas reconocidas que siempre llevan anillo dorado (si no son públicas de un solo nivel). Expresiones regulares sobre el nombre en MAYÚSCULAS sin acentos. Además cuentan como reconocidas las que tienen ficha en Wikidata en OpenStreetMap. Para agregar una, añade una línea.",
+  "patrones": [
+    "\\bITESO\\b",
+    "TEC(NOLOGICO)? DE MONTERREY|\\bITESM\\b",
+    "UNIVERSIDAD PANAMERICANA|\\bPANAMERICANA\\b.*(PREPA|UNIVERSIDAD)",
+    "UNIVERSIDAD AUTONOMA DE GUADALAJARA|\\bUAG\\b",
+    "UNIVERSIDAD DE GUADALAJARA|\\bUDG\\b|CENTRO UNIVERSITARIO DE",
+    "\\bUNIVA\\b|UNIVERSIDAD DEL VALLE DE ATEMAJAC",
+    "UNIVERSIDAD DEL VALLE DE MEXICO|\\bUVM\\b",
+    "UNIVERSIDAD ENRIQUE DIAZ DE LEON|\\bUNEDL\\b",
+    "\\bCETI\\b|CENTRO DE ENSENANZA TECNICA INDUSTRIAL",
+    "INSTITUTO TECNOLOGICO (JOSE MARIO MOLINA|DE ZAPOPAN|DE TLAJOMULCO)",
+    "COLEGIO ALEMAN|DEUTSCHE SCHULE",
+    "AMERICAN SCHOOL|ASFG",
+    "COLEGIO FRANCO MEXICANO|LYCEE FRANCAIS",
+    "INSTITUTO DE CIENCIAS\\b",
+    "COLEGIO CERVANTES",
+    "INSTITUTO LUX",
+    "COLEGIO GUADALAJARA",
+    "INSTITUTO ALPES|\\bALPES\\b.*(SAN JAVIER|CUMBRES|PALOMAR)",
+    "COLEGIO SANTA MARIA DE GUADALUPE",
+    "WINSTON CHURCHILL",
+    "COLEGIO LOMAS DEL VALLE",
+    "INSTITUTO TEPEYAC",
+    "\\bITEA\\b|EDUCACION AVANZADA"
+  ]
+}
